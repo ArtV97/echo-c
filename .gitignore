@@ -1,1 +1,6 @@
 test
+3rdparty
+!3rdparty/Makefile
+deployments
+echo
+echo-host

@@ -1,3 +1,4 @@
+#!/bin/sh
 # Copyright 2022 Cartesi Pte. Ltd.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -10,19 +11,15 @@
 # CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
 
-CC := riscv64-cartesi-linux-gnu-gcc
-CC_HOST := gcc
+# Start the Cartesi echo-dapp in host mode
 
-.PHONY: clean 3rdparty
+ROLLUP_HTTP_SERVER_PORT=5004
 
-echo: echo.c
-	make -C 3rdparty
-	$(CC) 3rdparty/mongoose/mongoose.c 3rdparty/cJSON/cJSON.c echo.c -o $@ -pthread
+# Rebuild echo dapp
+echo "Rebuilding echo-dapp: "
+make echo-host
 
-echo-host: echo.c
-	make -C 3rdparty
-	$(CC_HOST) 3rdparty/mongoose/mongoose.c 3rdparty/cJSON/cJSON.c echo.c -o $@ -pthread
-
-clean:
-	@rm -rf echo echo-host
-	make -C 3rdparty clean
+# Start echo dapp
+echo "Starting echo-dapp: "
+ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:$ROLLUP_HTTP_SERVER_PORT" \
+./echo-host
