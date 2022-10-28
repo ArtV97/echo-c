@@ -19,17 +19,16 @@
 #include "3rdparty/cJSON/cJSON.h"
 
 
-#define FINISH_STATUS_SZ 32
 #define ETH_ADDRESS_SZ 42
-#define MAX_ENDPOINT_SZ 16
 #define MAX_NOTICE_SZ 64000
 #define RES_BUFFER 1000
+
 
 char req_body[MAX_NOTICE_SZ+1];
 char res_body[RES_BUFFER+1];
 
-char *url_end;
 char *rollups_url;
+int len_rollups_url;
 char rollup_address[ETH_ADDRESS_SZ+1];
 
 int status_code = 0;    // HTTP response status code
@@ -74,13 +73,13 @@ void do_request(const char *uri) {
 
     mg_mgr_init(&mgr);                              // Init manager
 
-    strcat(rollups_url, uri);                       // build url (url+uri)
+    strcpy(rollups_url+len_rollups_url, uri);       // url+uri
 
     mg_http_connect(&mgr, rollups_url, fn, &done);  // Create client connection
     while (!done) mg_mgr_poll(&mgr, 50);            // connection loop
     mg_mgr_free(&mgr);                              // release resources
 
-    *url_end = '\0';                                // clear uri
+    rollups_url[len_rollups_url] = '\0';            // clear uri
     req_body[0] = '\0';                             // clear req body
 }
 
@@ -120,15 +119,10 @@ char *handle_inspect(cJSON *data) {
 
 
 int main() {
-    // get rollups url
-    char *aux = getenv("ROLLUP_HTTP_SERVER_URL");
-    char s[strlen(aux)+MAX_ENDPOINT_SZ+1];
-    strcpy(s, aux);
-    rollups_url = s;
-    url_end = rollups_url+strlen(aux);
-    char finish_status[FINISH_STATUS_SZ+1];
-    strcpy(finish_status, "accept");
-    
+    rollups_url = getenv("ROLLUP_HTTP_SERVER_URL");
+    len_rollups_url = strlen(rollups_url);
+    char *finish_status = "accept";
+
     while (1) {
         sprintf(req_body, "{\"status\": \"%s\"}", finish_status);
         printf("Sending finish\n");
@@ -153,7 +147,7 @@ int main() {
                     char *msg_sender_str = cJSON_Print(msg_sender);
                     
                     // remove ""
-                    msg_sender_str[strlen(msg_sender_str)-2] = '\0';
+                    msg_sender_str[strlen(msg_sender_str)-1] = '\0';
                     msg_sender_str++;
 
                     strncpy(rollup_address, msg_sender_str, ETH_ADDRESS_SZ);
@@ -166,9 +160,9 @@ int main() {
             char *request_type_str = cJSON_Print(request_type);
 
             if (strcmp(request_type_str, "\"advance_state\"") == 0) {
-                strcpy(finish_status, handle_advance(data));
+                finish_status = handle_advance(data);
             } else if (strcmp(request_type_str, "\"inspect_state\"") == 0) {
-                strcpy(finish_status, handle_inspect(data));
+                finish_status = handle_inspect(data);
             }
         }
     }
